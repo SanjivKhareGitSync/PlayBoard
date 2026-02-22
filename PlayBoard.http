@@ -1,0 +1,6 @@
+@PlayBoard_HostAddress = http://localhost:5052
+
+GET {{PlayBoard_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
