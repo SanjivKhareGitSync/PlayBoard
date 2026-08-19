@@ -10,9 +10,6 @@ namespace PlayBoard.Controllers
     [Authorize]
     public class GuessTheWordController : ControllerBase
     {
-
-
-
         [HttpGet("GetComparision")]
         public List<CharacterInfo> Get(string question, string guess)
         {

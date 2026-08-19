@@ -64,7 +64,7 @@ builder.Services.AddSwaggerGen(c =>
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Enter JWT Bearer token as: Bearer {token}",
+        Description = "Enter JWT Bearer token as: {token}",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
@@ -83,13 +83,35 @@ builder.Services.AddSwaggerGen(c =>
         { securityScheme, new string[] { } }
     });
 });
+//var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() ?? Array.Empty<string>();
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("DefaultCors", policy =>
+//    {
+//        if (allowedOrigins.Length == 0)
+//        {
+//            // Development fallback: allow any origin (no credentials)
+//            policy.AllowAnyOrigin()
+//                  .AllowAnyMethod()
+//                  .AllowAnyHeader();
+//        }
+//        else
+//        {
+//            // Production: only listed origins, allow standard headers and methods.
+//            // If you need cookies/auth cookies, call .AllowCredentials() here and ensure client uses credentials.
+//            policy.WithOrigins(allowedOrigins)
+//                  .AllowAnyMethod()
+//                  .AllowAnyHeader();
+//        }
+//    });
+//});
 
 var app = builder.Build();
 
 // After var app = builder.Build();
 app.UseCors("AllowAll");  // Before app.UseAuthorization() / app.MapControllers()
 
-
+app.UseCors("DefaultCors");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
