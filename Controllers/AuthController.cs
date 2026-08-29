@@ -68,5 +68,12 @@ namespace PlayBoard.Controllers
                 return Ok("FAILED");
             }
         }
+
+        [AllowAnonymous]
+        [HttpGet("Test")]
+        public IActionResult Test()
+        {
+            return Ok("Test successful");
+        }
     }
 }
