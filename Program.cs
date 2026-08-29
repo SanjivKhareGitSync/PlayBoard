@@ -28,10 +28,11 @@ builder.Services.AddAuthorization(options =>
 
 
 // JWT settings
+byte[] key;
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 if(jwtSettings["Key"] is not null)
 {
-    var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]?? "");
+    key = Encoding.UTF8.GetBytes(jwtSettings["Key"]?? "");
 }
 else
 {
