@@ -76,6 +76,7 @@ namespace PlayBoard.ClassCollection
                 var users = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
                 if (users == null || users.Count == 0)
                 {
+                    users ??= new Dictionary<string, string>();
                     users.Add(registrationForm.UserName, registrationForm.Password);
                     var NewUserData = JsonSerializer.Serialize(users);
                     File.WriteAllText(dataFile, NewUserData);

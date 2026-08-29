@@ -191,7 +191,7 @@ namespace PlayBoard.ClassCollection
             }
 
             var groups = new Dictionary<int, List<string>>(raw?.Count ?? 0);
-            return raw;
+            return raw ?? new Dictionary<int, List<string>>();
         }
     }
 }
