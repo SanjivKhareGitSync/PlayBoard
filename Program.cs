@@ -95,7 +95,7 @@ var app = builder.Build();
 
 // After var app = builder.Build();
 app.UseCors("AllowAll");  // Before app.UseAuthorization() / app.MapControllers()
-
+app.UseStaticFiles();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
