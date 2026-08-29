@@ -19,11 +19,17 @@ namespace PlayBoard.Controllers
         }
 
         [HttpGet("GetNewWord")]
-        public string Get()
+        public IActionResult Get()
         {
             GuessTheWord guessTheWord = new GuessTheWord();
             string charInfo = guessTheWord.GetNewWord();
-            return charInfo;
+
+            if(string.IsNullOrEmpty(charInfo))
+            {
+                return NotFound("Some error occurred.");
+            }
+
+            return Ok(charInfo);
         }
     }
 }
