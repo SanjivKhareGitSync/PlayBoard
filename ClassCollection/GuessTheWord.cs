@@ -4,7 +4,7 @@ namespace PlayBoard.ClassCollection
 {
     public class GuessTheWord
     {
-        private string _wordCollectionPath = "E:\\Program Files\\Visual studio new repo\\ProjectCompilation\\WordCollection.js";
+        private string _wordCollectionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WordCollection.js");
         private string[] _wordCollection;
         private Random _rnd;
 
