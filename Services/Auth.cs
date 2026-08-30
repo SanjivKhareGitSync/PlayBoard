@@ -26,9 +26,8 @@ namespace PlayBoard.Services
             if (storedHash is null)
                 return false;
 
-            //var result = _passwordHasher.VerifyHashedPassword(new object(), storedHash, loginRequest.Password);
-            //return result is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded;
-            return (storedHash == loginRequest.Password);
+            var result = _passwordHasher.VerifyHashedPassword(new object(), storedHash, loginRequest.Password);
+            return result is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded;
         }
 
         public async Task<RegistrationResult> RegisterUserAsync(RegistrationForm registrationForm)
