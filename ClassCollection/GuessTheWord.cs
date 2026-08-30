@@ -21,7 +21,8 @@ namespace PlayBoard.ClassCollection
             var model = LoadWordCollectionModel();
             if (model.Count == 0)
             {
-                return string.Empty;
+                //return string.Empty;
+                return "line number 25, word collection not working";
             }
 
             var keys = model.Keys.ToList();
