@@ -130,6 +130,11 @@
             transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
         }
 
+            button:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+
             button:focus-visible {
                 outline: 2px solid var(--amber);
                 outline-offset: 2px;
@@ -141,7 +146,7 @@
             flex: 1;
         }
 
-            .btn-primary:hover {
+            .btn-primary:hover:not(:disabled) {
                 background: #E5B15A;
                 transform: translateY(-1px);
             }
@@ -152,7 +157,7 @@
             border: 1px solid rgba(255,255,255,0.15);
         }
 
-            .btn-secondary:hover {
+            .btn-secondary:hover:not(:disabled) {
                 border-color: var(--amber);
                 color: var(--amber);
             }
@@ -172,7 +177,7 @@
             background: var(--panel-raised);
             border-radius: 8px;
             padding: 14px 18px;
-            margin: 18px 0;
+            margin: 18px 0 14px;
             font-family: 'IBM Plex Mono', monospace;
         }
 
@@ -188,6 +193,57 @@
                 font-weight: 600;
                 font-size: 1.1rem;
             }
+
+        /* Revealed-letters pattern (green letters locked across guesses) */
+        .pattern-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .pattern-tile {
+            width: 38px;
+            height: 44px;
+            border-radius: 6px;
+            background: var(--panel-raised);
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--amber);
+        }
+
+            .pattern-tile.blank {
+                color: var(--text-lo);
+            }
+
+        .gray-letters {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-lo);
+            text-align: center;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+            .gray-letters .letters {
+                color: var(--text-hi);
+                font-weight: 600;
+            }
+
+        .attempts-note {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--text-lo);
+            margin-bottom: 16px;
+            font-family: 'IBM Plex Mono', monospace;
+            letter-spacing: 0.4px;
+        }
 
         /* Signature element: guess entry rendered as live letter tiles */
         .tile-input-wrap {
@@ -242,6 +298,31 @@
             width: 100%;
             margin-bottom: 4px;
         }
+
+        #revealBtn {
+            margin-top: 12px;
+        }
+
+        .congrats-banner {
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            margin: 16px 0 0;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+            .congrats-banner.win {
+                background: rgba(76,122,87,0.15);
+                border-color: var(--moss);
+                color: #8FC79D;
+            }
+
+            .congrats-banner.neutral {
+                background: rgba(217,164,65,0.12);
+                border-color: var(--amber-dim);
+                color: var(--amber);
+            }
 
         .comparison-grid {
             display: flex;
@@ -372,6 +453,12 @@
                 height: 44px;
                 font-size: 1.1rem;
             }
+
+            .pattern-tile {
+                width: 32px;
+                height: 38px;
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
@@ -407,12 +494,18 @@
             <span class="value"><span id="maxLen">0</span> letters</span>
         </div>
 
+        <div id="patternRow" class="pattern-row"></div>
+        <div id="grayLettersDisplay" class="gray-letters">Not in word: —</div>
+        <div id="attemptsNote" class="attempts-note">Attempt 0 of 10</div>
+
         <div class="tile-input-wrap">
             <div id="tileRow" class="tile-row"></div>
             <input id="guessInput" type="text" maxlength="0" autocomplete="off" />
         </div>
 
         <button id="submitGuessBtn" class="btn-primary btn-block">Submit guess</button>
+        <button id="revealBtn" class="btn-secondary btn-block hidden">Reveal word</button>
+        <div id="congratsBanner" class="congrats-banner hidden"></div>
 
         <div id="comparisonContainer"></div>
     </div>
@@ -429,15 +522,23 @@
         const CACHE_KEY = "auth_token";
         const CACHE_KEY_TIMESTAMP = "auth_token_ts";
         const MAX_AGE_SECONDS = 3600;
+        const MAX_ATTEMPTS_BEFORE_REVEAL = 10;
 
         let currentToken = null;
         let currentWordLength = 0;
         let currentWord = "";
 
+        // Round state — resets on every "Get new word"
+        let attemptCount = 0;
+        let wordPattern = [];
+        let grayLetters = new Set();
+        let roundLocked = false;
+
         document.getElementById("loginBtn").addEventListener("click", doLogin);
         document.getElementById("signupBtn").addEventListener("click", doSignUp);
         document.getElementById("newWordBtn").addEventListener("click", getNewWord);
         document.getElementById("submitGuessBtn").addEventListener("click", submitGuess);
+        document.getElementById("revealBtn").addEventListener("click", revealWord);
         document.getElementById("guessInput").addEventListener("input", updateTileDisplay);
         document.getElementById("guessInput").addEventListener("keypress", function (e) {
             if (e.key === "Enter") submitGuess();
@@ -461,6 +562,69 @@
                 tile.textContent = char;
                 tile.classList.toggle("filled", char !== "");
             });
+        }
+
+        function updatePatternDisplay() {
+            const row = document.getElementById("patternRow");
+            row.innerHTML = "";
+            wordPattern.forEach(ch => {
+                const tile = document.createElement("div");
+                tile.className = "pattern-tile" + (ch === "_" ? " blank" : "");
+                tile.textContent = ch === "_" ? "" : ch;
+                row.appendChild(tile);
+            });
+        }
+
+        function updateGrayLettersDisplay() {
+            const el = document.getElementById("grayLettersDisplay");
+            if (grayLetters.size === 0) {
+                el.textContent = "Not in word: —";
+            } else {
+                el.innerHTML = `Not in word: <span class="letters">${Array.from(grayLetters).join(", ")}</span>`;
+            }
+        }
+
+        function updateAttemptsDisplay() {
+            document.getElementById("attemptsNote").textContent = `Attempt ${attemptCount} of ${MAX_ATTEMPTS_BEFORE_REVEAL}`;
+        }
+
+        function resetRoundState(length) {
+            attemptCount = 0;
+            wordPattern = Array(length).fill("_");
+            grayLetters = new Set();
+            roundLocked = false;
+
+            document.getElementById("revealBtn").classList.add("hidden");
+            document.getElementById("congratsBanner").classList.add("hidden");
+            document.getElementById("congratsBanner").classList.remove("win", "neutral");
+            document.getElementById("submitGuessBtn").disabled = false;
+            document.getElementById("guessInput").disabled = false;
+            document.getElementById("comparisonContainer").innerHTML = "";
+
+            updatePatternDisplay();
+            updateGrayLettersDisplay();
+            updateAttemptsDisplay();
+        }
+
+        function lockRound() {
+            roundLocked = true;
+            document.getElementById("submitGuessBtn").disabled = true;
+            document.getElementById("guessInput").disabled = true;
+            document.getElementById("revealBtn").classList.add("hidden");
+        }
+
+        function showBanner(message, variant) {
+            const banner = document.getElementById("congratsBanner");
+            banner.textContent = message;
+            banner.classList.remove("hidden", "win", "neutral");
+            banner.classList.add(variant);
+        }
+
+        function revealWord() {
+            if (roundLocked) return;
+            lockRound();
+            showBanner(`The word was ${currentWord}. Loading a new word...`, "neutral");
+            setTimeout(getNewWord, 2000);
         }
 
         async function doLogin() {
@@ -546,7 +710,6 @@
 
         async function getNewWord() {
             const resultEl = document.getElementById("result");
-            const container = document.getElementById("comparisonContainer");
             if (!currentToken) {
                 resultEl.textContent = "Sign in first.";
                 return;
@@ -554,7 +717,6 @@
 
             try {
                 resultEl.textContent = "Fetching new word...";
-                container.innerHTML = "";
                 const response = await fetch(wordUrl, {
                     method: "GET",
                     headers: { "accept": "text/plain", "Authorization": `Bearer ${currentToken}` }
@@ -572,6 +734,7 @@
                 document.getElementById("guessInput").maxLength = currentWordLength;
                 document.getElementById("guessInput").value = "";
                 renderEmptyTiles(currentWordLength);
+                resetRoundState(currentWordLength);
                 document.getElementById("guessInput").focus();
 
                 resultEl.textContent = "New word ready. Type your guess.";
@@ -581,6 +744,7 @@
         }
 
         function submitGuess() {
+            if (roundLocked) return;
             const guess = document.getElementById("guessInput").value.trim().toUpperCase();
             if (guess.length !== currentWordLength) {
                 alert("Guess must be exactly " + currentWordLength + " letters!");
@@ -621,10 +785,33 @@
                     tile.className = `letter-tile status-${item.status}`;
                     tile.textContent = item.char;
                     grid.appendChild(tile);
+
+                    if (item.status === "GREEN") {
+                        wordPattern[item.index] = item.char.toUpperCase();
+                    } else if (item.status === "GRAY") {
+                        grayLetters.add(item.char.toUpperCase());
+                    }
                 });
                 container.appendChild(grid);
 
-                resultEl.textContent = `Comparison received (${comparison.length} letters).`;
+                attemptCount++;
+                updatePatternDisplay();
+                updateGrayLettersDisplay();
+                updateAttemptsDisplay();
+
+                const isWin = comparison.length === currentWordLength && comparison.every(item => item.status === "GREEN");
+
+                if (isWin) {
+                    lockRound();
+                    showBanner(`🎉 You got it! The word was ${currentWord}.`, "win");
+                    resultEl.textContent = "Correct! Loading a new word...";
+                    setTimeout(getNewWord, 1800);
+                } else {
+                    resultEl.textContent = `Comparison received (${comparison.length} letters).`;
+                    if (attemptCount >= MAX_ATTEMPTS_BEFORE_REVEAL) {
+                        document.getElementById("revealBtn").classList.remove("hidden");
+                    }
+                }
             } catch (err) {
                 resultEl.textContent = `Comparison error: ${err.message}`;
                 container.innerHTML = "";
