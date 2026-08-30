@@ -10,11 +10,8 @@ namespace PlayBoard.ClassCollection
         public GuessTheWord()
         {
             _random = new Random();
-            var projectRoot = GetProjectRootPath();
-            _wordCollectionPath = Path.Combine(projectRoot, "DataCollection", "WordCollection.js");
+            _wordCollectionPath = Path.Combine(AppContext.BaseDirectory, "DataCollection", "WordCollection.js");
         }
-
-        private static string GetProjectRootPath() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
 
         public string GetNewWord()
         {
