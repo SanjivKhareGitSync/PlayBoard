@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using PlayBoard.ClassCollection;
 using PlayBoard.ModelCollection;
+using PlayBoard.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -15,22 +15,21 @@ namespace PlayBoard.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _config;
-        public AuthController(IConfiguration config)
+        private readonly IAuthService _authService;
+
+        public AuthController(IConfiguration config, IAuthService authService)
         {
             _config = config;
+            _authService = authService;
         }
 
         [AllowAnonymous]
         [HttpPost("Login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-
-            // Dummy authentication logic
-            Auth auth = new Auth();
-            if (!auth.VerifyUserData(request))
-            {
+            if (!_authService.VerifyCredentials(request))
                 return Unauthorized();
-            }
+
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, request.UserName),
@@ -57,16 +56,14 @@ namespace PlayBoard.Controllers
         [HttpPost("Register")]
         public IActionResult Registration(RegistrationForm registrationForm)
         {
-            Auth auth = new Auth();
-            string registrationResult = auth.RegisterUser(registrationForm);
-            if (registrationResult == "1")
-            { 
-                return Ok("SUCCESS");
-            }
-            else
+            var result = _authService.RegisterUser(registrationForm);
+            return result switch
             {
-                return Ok("FAILED");
-            }
+                RegistrationResult.Success => Ok("SUCCESS"),
+                RegistrationResult.UserAlreadyExists => Conflict("User already exists"),
+                RegistrationResult.InvalidInput => BadRequest("Username and password are required"),
+                _ => StatusCode(500, "Something went wrong")
+            };
         }
 
         [AllowAnonymous]

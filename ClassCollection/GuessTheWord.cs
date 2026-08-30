@@ -4,69 +4,63 @@ namespace PlayBoard.ClassCollection
 {
     public class GuessTheWord
     {
-        private string _wordCollectionPath =  Path.Combine(AppContext.BaseDirectory, "DataCollection","WordCollection.js");
-        private string[] _wordCollection;
-        private Random _rnd;
+        private readonly string _wordCollectionPath;
+        private readonly Random _random;
 
         public GuessTheWord()
         {
-            _rnd = new Random();
+            _random = new Random();
             var projectRoot = GetProjectRootPath();
             _wordCollectionPath = Path.Combine(projectRoot, "DataCollection", "WordCollection.js");
-
-            if (File.Exists(_wordCollectionPath))
-            {
-                var jsonString = File.ReadAllText(_wordCollectionPath);
-                _wordCollection = jsonString.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                                            .Select(s => s.Trim())
-                                            .ToArray();
-            }
-            else
-            {
-                _wordCollection = Array.Empty<string>();
-            }
         }
-        private static string GetProjectRootPath()=> Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+
+        private static string GetProjectRootPath() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+
         public string GetNewWord()
         {
             var model = LoadWordCollectionModel();
-            if (model.Count() == 0)
+            if (model.Count == 0)
             {
                 return string.Empty;
             }
-            int index1 = _rnd.Next(model.Keys.Min(), model.Keys.Max());
-            int index2 = _rnd.Next(model[index1].Count());
-            return model[index1][index2].ToUpper();
+
+            var keys = model.Keys.ToList();
+            int groupKey = keys[_random.Next(keys.Count)];
+            var wordsInGroup = model[groupKey];
+
+            int wordIndex = _random.Next(wordsInGroup.Count);
+            return wordsInGroup[wordIndex].ToUpper();
         }
-        public List<CharacterInfo> GetCharacters(string guess, string question)
+
+        public List<CharacterInfo> CompareGuess(string guess, string targetWord)
         {
-            string Question = question.ToUpper();
+            string TargetWord = targetWord.ToUpper();
             string Guess = guess.ToUpper();
-            List<int> jumpGreen = new List<int>();
-            List<int> jumpGray = new List<int>();
-            List<int> jumpYellow = new List<int>();
+            List<int> greenIndices = new List<int>();
+            List<int> grayIndices = new List<int>();
+            List<int> yellowIndices = new List<int>();
             List<CharacterInfo> characters = new List<CharacterInfo>();
             for (int i = 0; i < Guess.Length; i++)
             {
                 CharacterInfo info = new CharacterInfo();
                 char chr = Guess[i];
 
-                if (!Question.Contains(chr))
+                if (!TargetWord.Contains(chr))
                 {
-                    jumpGray.Add(i);
+                    grayIndices.Add(i);
                     info.Char = chr;
-                    info.index = i;
-                    info.status = "GRAY";
+                    info.Index = i;
+                    info.Status = "GRAY";
                     characters.Add(info);
                     continue;
                 }
 
-                if (Question[i] == chr)
+                if (TargetWord[i] == chr)
                 {
-                    jumpGreen.Add(i);
+                    greenIndices.Add(i);
                     info.Char = chr;
-                    info.index = i;
-                    info.status = "GREEN";
+                    info.Index = i;
+                    info.Status = "GREEN";
                     characters.Add(info);
 
                     continue;
@@ -76,49 +70,50 @@ namespace PlayBoard.ClassCollection
             {
                 CharacterInfo info = new CharacterInfo();
                 char chr = Guess[i];
-                if (jumpGreen.Contains(i) || jumpGray.Contains(i))
+                if (greenIndices.Contains(i) || grayIndices.Contains(i))
                 {
                     continue;
                 }
                 int notFound = 1;
-                for (int j = 0; j < Question.Length; j++)
+                for (int j = 0; j < TargetWord.Length; j++)
                 {
-                    if (jumpGreen.Contains(j) || jumpYellow.Contains(j))
+                    if (greenIndices.Contains(j) || yellowIndices.Contains(j))
                     {
                         continue;
                     }
-                    if (chr == Question[j])
+                    if (chr == TargetWord[j])
                     {
-                        jumpYellow.Add(j);
+                        yellowIndices.Add(j);
                         info.Char = chr;
-                        info.index = i;
-                        info.status = "YELLOW";
+                        info.Index = i;
+                        info.Status = "YELLOW";
                         characters.Add(info);
                         notFound = 0;
                         break;
                     }
                 }
-                if (notFound==1)
+                if (notFound == 1)
                 {
                     info.Char = chr;
-                    info.index = i;
-                    info.status = "GRAY";
+                    info.Index = i;
+                    info.Status = "GRAY";
                     characters.Add(info);
                 }
             }
 
-            jumpGreen.Clear();
-            jumpYellow.Clear();
-            return characters.OrderBy(x=>x.index).ToList();
+            greenIndices.Clear();
+            yellowIndices.Clear();
+            return characters.OrderBy(x => x.Index).ToList();
         }
-        public List<CharacterInfo> GetCharacters2(string guess, string Question)
+
+        public List<CharacterInfo> CompareGuessOptimized(string guess, string targetWord)
         {
             int guessLen = guess.Length;
-            int questionLen = Question.Length;
+            int targetLen = targetWord.Length;
 
             bool[] isGreen = new bool[guessLen];
             bool[] isGray = new bool[guessLen];
-            bool[] usedInQuestion = new bool[questionLen]; // marks question positions already matched (green or yellow)
+            bool[] usedInTarget = new bool[targetLen]; // marks target positions already matched (green or yellow)
 
             var characters = new List<CharacterInfo>(guessLen);
 
@@ -126,23 +121,23 @@ namespace PlayBoard.ClassCollection
             for (int i = 0; i < guessLen; i++)
             {
                 char chr = guess[i];
-                if (!Question.Contains(chr))
+                if (!targetWord.Contains(chr))
                 {
                     isGray[i] = true;
-                    characters.Add(new CharacterInfo { Char = chr, index = i, status = "GRAY" });
+                    characters.Add(new CharacterInfo { Char = chr, Index = i, Status = "GRAY" });
                     continue;
                 }
 
-                if (i < questionLen && Question[i] == chr)
+                if (i < targetLen && targetWord[i] == chr)
                 {
                     isGreen[i] = true;
-                    usedInQuestion[i] = true;
-                    characters.Add(new CharacterInfo { Char = chr, index = i, status = "GREEN" });
+                    usedInTarget[i] = true;
+                    characters.Add(new CharacterInfo { Char = chr, Index = i, Status = "GREEN" });
                     continue;
                 }
             }
 
-            // Second pass: for remaining guess positions, try to find a matching unused question position -> YELLOW; otherwise GRAY
+            // Second pass: for remaining guess positions, try to find a matching unused target position -> YELLOW; otherwise GRAY
             for (int i = 0; i < guessLen; i++)
             {
                 if (isGreen[i] || isGray[i])
@@ -151,15 +146,15 @@ namespace PlayBoard.ClassCollection
                 char chr = guess[i];
                 bool foundYellow = false;
 
-                for (int j = 0; j < questionLen; j++)
+                for (int j = 0; j < targetLen; j++)
                 {
-                    if (usedInQuestion[j])
+                    if (usedInTarget[j])
                         continue;
 
-                    if (Question[j] == chr)
+                    if (targetWord[j] == chr)
                     {
-                        usedInQuestion[j] = true;
-                        characters.Add(new CharacterInfo { Char = chr, index = i, status = "YELLOW" });
+                        usedInTarget[j] = true;
+                        characters.Add(new CharacterInfo { Char = chr, Index = i, Status = "YELLOW" });
                         foundYellow = true;
                         break;
                     }
@@ -167,31 +162,29 @@ namespace PlayBoard.ClassCollection
 
                 if (!foundYellow)
                 {
-                    characters.Add(new CharacterInfo { Char = chr, index = i, status = "GRAY" });
+                    characters.Add(new CharacterInfo { Char = chr, Index = i, Status = "GRAY" });
                 }
             }
 
             return characters;
         }
+
         private Dictionary<int, List<string>> LoadWordCollectionModel()
         {
-            if (string.IsNullOrWhiteSpace(_wordCollectionPath) || !System.IO.File.Exists(_wordCollectionPath))
+            if (string.IsNullOrWhiteSpace(_wordCollectionPath) || !File.Exists(_wordCollectionPath))
                 return new Dictionary<int, List<string>>();
 
-            string json = System.IO.File.ReadAllText(_wordCollectionPath);
+            string json = File.ReadAllText(_wordCollectionPath);
 
-            Dictionary<int, List<string>>? raw;
             try
             {
-                raw = JsonSerializer.Deserialize<Dictionary<int, List<string>>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var raw = JsonSerializer.Deserialize<Dictionary<int, List<string>>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return raw ?? new Dictionary<int, List<string>>();
             }
             catch (JsonException)
             {
                 return new Dictionary<int, List<string>>();
             }
-
-            var groups = new Dictionary<int, List<string>>(raw?.Count ?? 0);
-            return raw ?? new Dictionary<int, List<string>>();
         }
     }
 }

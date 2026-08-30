@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PlayBoard.ClassCollection;
 
@@ -11,11 +10,11 @@ namespace PlayBoard.Controllers
     public class GuessTheWordController : ControllerBase
     {
         [HttpGet("GetComparision")]
-        public List<CharacterInfo> Get(string question, string guess)
+        public IActionResult Get(string question, string guess)
         {
             GuessTheWord guessTheWord = new GuessTheWord();
-            var charInfo = guessTheWord.GetCharacters(guess,question);
-            return charInfo;
+            var charInfo = guessTheWord.CompareGuess(guess, question);
+            return Ok(charInfo);
         }
 
         [HttpGet("GetNewWord")]
