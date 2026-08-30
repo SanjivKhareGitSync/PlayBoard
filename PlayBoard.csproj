@@ -10,5 +10,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.24" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
-
+	<ItemGroup>
+		<Content Include="DataCollection\WordCollection.js" CopyToOutputDirectory="Always" />
+	</ItemGroup>
 </Project>

@@ -19,7 +19,7 @@ namespace PlayBoard.ClassCollection
             if (model.Count == 0)
             {
                 //return string.Empty;
-                return "line number 25, word collection not working";
+                return _wordCollectionPath;
             }
 
             var keys = model.Keys.ToList();
