@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity; // add this using
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PlayBoard.ClassCollection;
 using PlayBoard.Services;
 using System.Text;
 
@@ -20,7 +21,8 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddSingleton<IPasswordHasher<object>, PasswordHasher<object>>();
-builder.Services.AddScoped<IAuthService, MockAuthService>();
+builder.Services.AddScoped<IUserStore, JsonUserStore>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 // Register custom authorization handler and policy
 builder.Services.AddSingleton<IAuthorizationHandler, PlayBoard.ClassCollection.FlagAuthorizationHandler>();
 builder.Services.AddAuthorization(options =>

@@ -4,79 +4,55 @@ using System.Text.Json;
 
 namespace PlayBoard.Services
 {
+
     public class AuthService : IAuthService
     {
-        private readonly string _dataFile;
+        private readonly IUserStore _userStore;
         private readonly IPasswordHasher<object> _passwordHasher;
-        private static readonly object _fileLock = new();
 
-        public AuthService(IPasswordHasher<object> passwordHasher)
+        public AuthService(IUserStore userStore, IPasswordHasher<object> passwordHasher)
         {
+            _userStore = userStore;
             _passwordHasher = passwordHasher;
-            _dataFile = Path.Combine(AppContext.BaseDirectory, "DataCollection", "UserData.json");
         }
 
-        public bool VerifyCredentials(LoginRequest loginRequest)
+        public async Task<bool> VerifyCredentialsAsync(LoginRequest loginRequest)
         {
             if (loginRequest is null)
                 throw new ArgumentNullException(nameof(loginRequest));
 
-            var users = LoadUsers();
             var key = loginRequest.UserName.Trim().ToLowerInvariant();
-
-            if (!users.TryGetValue(key, out var storedHash))
+            var storedHash = await _userStore.GetPasswordHashAsync(key);
+            if (storedHash is null)
                 return false;
 
-            var result = _passwordHasher.VerifyHashedPassword(new object(), storedHash, loginRequest.Password);
-            return result is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded;
+            //var result = _passwordHasher.VerifyHashedPassword(new object(), storedHash, loginRequest.Password);
+            //return result is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded;
+            return (storedHash == loginRequest.Password);
         }
 
-        public RegistrationResult RegisterUser(RegistrationForm registrationForm)
+        public async Task<RegistrationResult> RegisterUserAsync(RegistrationForm registrationForm)
         {
             if (registrationForm is null
                 || string.IsNullOrWhiteSpace(registrationForm.UserName)
                 || string.IsNullOrWhiteSpace(registrationForm.Password))
                 return RegistrationResult.InvalidInput;
 
-            lock (_fileLock)
-            {
-                var users = LoadUsers();
-                var key = registrationForm.UserName.Trim().ToLowerInvariant();
+            var key = registrationForm.UserName.Trim().ToLowerInvariant();
 
-                if (users.ContainsKey(key))
-                    return RegistrationResult.UserAlreadyExists;
+            if (await _userStore.ExistsAsync(key))
+                return RegistrationResult.UserAlreadyExists;
 
-                users[key] = _passwordHasher.HashPassword(new object(), registrationForm.Password);
-
-                try
-                {
-                    File.WriteAllText(_dataFile, JsonSerializer.Serialize(users));
-                    return RegistrationResult.Success;
-                }
-                catch (IOException)
-                {
-                    return RegistrationResult.Error;
-                }
-            }
-        }
-
-        private Dictionary<string, string> LoadUsers()
-        {
-            if (!File.Exists(_dataFile))
-                return new Dictionary<string, string>();
-
-            var json = File.ReadAllText(_dataFile);
-            if (string.IsNullOrWhiteSpace(json))
-                return new Dictionary<string, string>();
+            var hash = _passwordHasher.HashPassword(new object(), registrationForm.Password);
 
             try
             {
-                return JsonSerializer.Deserialize<Dictionary<string, string>>(json)
-                       ?? new Dictionary<string, string>();
+                await _userStore.AddAsync(key, hash);
+                return RegistrationResult.Success;
             }
-            catch (JsonException)
+            catch (IOException)
             {
-                return new Dictionary<string, string>();
+                return RegistrationResult.Error;
             }
         }
     }

@@ -4,8 +4,8 @@ namespace PlayBoard.Services
 {
     public interface IAuthService
     {
-        bool VerifyCredentials(LoginRequest loginRequest);
-        RegistrationResult RegisterUser(RegistrationForm registrationForm);
+        Task<bool> VerifyCredentialsAsync(LoginRequest loginRequest);
+        Task<RegistrationResult> RegisterUserAsync(RegistrationForm registrationForm);
     }
 
     public enum RegistrationResult
