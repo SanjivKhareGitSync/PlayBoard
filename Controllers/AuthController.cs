@@ -25,11 +25,10 @@ namespace PlayBoard.Controllers
 
         [AllowAnonymous]
         [HttpPost("Login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            if (!_authService.VerifyCredentials(request))
+            if (!await _authService.VerifyCredentialsAsync(request))
                 return Unauthorized();
-
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, request.UserName),
@@ -51,12 +50,11 @@ namespace PlayBoard.Controllers
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
             return Ok(new { token = tokenString });
         }
-
         [AllowAnonymous]
         [HttpPost("Register")]
-        public IActionResult Registration(RegistrationForm registrationForm)
+        public async Task<IActionResult> Registration(RegistrationForm registrationForm)
         {
-            var result = _authService.RegisterUser(registrationForm);
+            var result = await _authService.RegisterUserAsync(registrationForm);
             return result switch
             {
                 RegistrationResult.Success => Ok("SUCCESS"),
@@ -65,7 +63,6 @@ namespace PlayBoard.Controllers
                 _ => StatusCode(500, "Something went wrong")
             };
         }
-
         [AllowAnonymous]
         [HttpGet("Test")]
         public IActionResult Test()
