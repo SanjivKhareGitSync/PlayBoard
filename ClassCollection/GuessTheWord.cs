@@ -184,5 +184,11 @@ namespace PlayBoard.ClassCollection
                 return new Dictionary<int, List<string>>();
             }
         }
+
+        public List<string> GetAllWords()
+        {
+            var model = LoadWordCollectionModel();
+            return model.Values.SelectMany(words => words).ToList();
+        }
     }
 }

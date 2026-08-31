@@ -22,6 +22,11 @@ namespace PlayBoard.Services
         {
             
         }
+        
+        public async Task<IReadOnlyCollection<string>> GetAllUsernamesAsync()
+        {
+            return new List<string>().AsReadOnly();
+        }
 
     }
 }

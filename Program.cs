@@ -3,13 +3,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using PlayBoard.ClassCollection;
+using PlayBoard.Middleware;
 using PlayBoard.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
@@ -23,21 +25,23 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<IPasswordHasher<object>, PasswordHasher<object>>();
 builder.Services.AddScoped<IUserStore, JsonUserStore>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-// Register custom authorization handler and policy
+builder.Services.AddSingleton<IGameStateStore, InMemoryGameStateStore>();
+
+// Register custom authorization handlers and policies
 builder.Services.AddSingleton<IAuthorizationHandler, PlayBoard.ClassCollection.FlagAuthorizationHandler>();
 builder.Services.AddAuthorization(options =>
 {
     // Policy name "FlagAllowed" — require the custom requirement
     options.AddPolicy("FlagAllowed", policy => policy.Requirements.Add(new PlayBoard.ClassCollection.FlagRequirement()));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 });
-
 
 // JWT settings
 byte[] key;
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-if(jwtSettings["Key"] is not null)
+if (jwtSettings["Key"] is not null)
 {
-    key = Encoding.UTF8.GetBytes(jwtSettings["Key"]?? "");
+    key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "");
 }
 else
 {
@@ -65,8 +69,6 @@ builder.Services
             ClockSkew = TimeSpan.Zero
         };
     });
-
-builder.Services.AddAuthorization();
 
 // Swagger with JWT Bearer support
 builder.Services.AddEndpointsApiExplorer();
@@ -96,18 +98,20 @@ builder.Services.AddSwaggerGen(c =>
         { securityScheme, new string[] { } }
     });
 });
+
 var app = builder.Build();
 
 // After var app = builder.Build();
 app.UseCors("AllowAll");  // Before app.UseAuthorization() / app.MapControllers()
 app.UseStaticFiles();
+app.UseExceptionHandler();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-if(app.Environment.IsProduction())
+if (app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -116,6 +120,7 @@ if(app.Environment.IsProduction())
 app.UseHttpsRedirection();
 
 app.UseAuthentication(); // must come before UseAuthorization
+app.UseMiddleware<AdminAccessMiddleware>(); // path-based guard, before routing decides the endpoint
 app.UseAuthorization();
 
 app.MapControllers();

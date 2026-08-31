@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using PlayBoard.ClassCollection;
 using PlayBoard.ModelCollection;
 using PlayBoard.Services;
 using System.IdentityModel.Tokens.Jwt;
@@ -29,12 +28,16 @@ namespace PlayBoard.Controllers
         {
             if (!await _authService.VerifyCredentialsAsync(request))
                 return Unauthorized();
+
+            var adminUsers = _config.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
+            bool isAdmin = adminUsers.Contains(request.UserName, StringComparer.OrdinalIgnoreCase);
+
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, request.UserName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(ClaimTypes.Name, request.UserName),
-                new Claim(ClaimTypes.Role, "Admin") // example role
+                new Claim(ClaimTypes.Role, isAdmin ? "Admin" : "User")
             };
             var jwtSettings = _config.GetSection("Jwt");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? ""));

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlayBoard.ClassCollection;
+using PlayBoard.Services;
 
 namespace PlayBoard.Controllers
 {
@@ -9,26 +10,49 @@ namespace PlayBoard.Controllers
     [Authorize]
     public class GuessTheWordController : ControllerBase
     {
-        [HttpGet("GetComparision")]
-        public IActionResult Get(string question, string guess)
+        private readonly IGameStateStore _gameStateStore;
+
+        public GuessTheWordController(IGameStateStore gameStateStore)
         {
+            _gameStateStore = gameStateStore;
+        }
+
+        [HttpGet("GetComparision")]
+        public IActionResult Get(string guess)
+        {
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username))
+                return Unauthorized();
+
+            var currentWord = _gameStateStore.GetCurrentWord(username);
+            if (string.IsNullOrEmpty(currentWord))
+                return BadRequest("No active word for this user. Call GetNewWord first.");
+
+            //if(guess.Length != currentWord.Length)
+            //    return BadRequest("Guess length does not match the current word length.");
+
             GuessTheWord guessTheWord = new GuessTheWord();
-            var charInfo = guessTheWord.CompareGuess(guess, question);
+            var charInfo = guessTheWord.CompareGuess(guess, currentWord);
             return Ok(charInfo);
         }
 
         [HttpGet("GetNewWord")]
         public IActionResult Get()
         {
-            GuessTheWord guessTheWord = new GuessTheWord();
-            string charInfo = guessTheWord.GetNewWord();
+            var username = User.Identity?.Name;
+            if (string.IsNullOrEmpty(username))
+                return Unauthorized();
 
-            if(string.IsNullOrEmpty(charInfo))
+            GuessTheWord guessTheWord = new GuessTheWord();
+            string word = guessTheWord.GetNewWord();
+
+            if (string.IsNullOrEmpty(word))
             {
                 return NotFound("Some error occurred.");
             }
 
-            return Ok(charInfo);
+            _gameStateStore.SetCurrentWord(username, word);
+            return Ok(word);
         }
     }
 }
