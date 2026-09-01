@@ -923,7 +923,7 @@
 
             try {
                 resultEl.textContent = "Checking guess...";
-                const url = `${compareUrl}?question=${encodeURIComponent(word)}&guess=${encodeURIComponent(guess)}`;
+                const url = `${compareUrl}?guess=${encodeURIComponent(guess)}`;
                 const response = await fetch(url, {
                     method: "GET",
                     headers: { "accept": "text/plain", "Authorization": `Bearer ${currentToken}` }

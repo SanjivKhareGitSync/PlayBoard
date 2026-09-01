@@ -40,6 +40,12 @@ namespace PlayBoard.Services
             }
         }
 
+        public async Task<IReadOnlyCollection<string>> GetAllUsernamesAsync()
+        {
+            var users = await LoadUsersAsync();
+            return users.Keys.ToList().AsReadOnly();
+        }
+
         private async Task<Dictionary<string, string>> LoadUsersAsync()
         {
             if (!File.Exists(_dataFile))
