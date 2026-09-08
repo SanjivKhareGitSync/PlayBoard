@@ -438,7 +438,12 @@
 
     <div id="attemptsBoard"></div>
 
-    <input id="guessInput" type="text" maxlength="0" autocomplete="off" />
+    <!-- Collapsed placeholder home for the shared input before any word is loaded.
+         Must stay 0x0 and positioned, so #guessInput's absolute inset:0 never
+         expands to cover the full viewport before JS moves it into a real row. -->
+    <div class="tile-input-wrap" style="width:0; height:0; overflow:hidden;">
+      <input id="guessInput" type="text" maxlength="0" autocomplete="off" />
+    </div>
 
     <button id="submitGuessBtn" class="btn-primary btn-block">Submit guess</button>
     <div id="congratsBanner" class="congrats-banner hidden"></div>
